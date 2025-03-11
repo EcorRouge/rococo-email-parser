@@ -1,54 +1,33 @@
-import email
-import email.utils
-import re
-
-from datetime import timezone, datetime
-from email import policy
+from datetime import datetime
+from email import policy, message_from_string
 from email.message import EmailMessage
 
 import dateutil.parser
 
-from rococo.models import Email, EmailAddress, ContentTypes, JournalingHeader
+from rococo.models import Email, ContentTypes, JournalingHeader
 
 from rococo.exceptions import (
-    DateNotFoundException, InvalidEmailException
+    InvalidEmailException
 )
 
 from .attachment_parser import _parse_attachments
 from .body_parser import _parse_body, _parse_html, _parse_previous_date
-from .email_encodings import _decode_content
+from .message_parser import (
+    _decode_bytes,
+    _get_message_date,
+    _get_original_messages
+)
 
 from .header_parser import (
-    _get_header, _parse_message_id, _parse_bcc, _parse_from, _parse_to, _parse_cc, _parse_antispam_report
+    _parse_message_id, _parse_bcc, _parse_from, _parse_to, _parse_cc, _parse_antispam_report
 )
 
-TIMESTAMP_FORMAT = '%d-%m-%Y %H:%M:%S'
 
-# Sample date record catered in the pattern: Sat, 5 Jul 2020 18:13:51 +0000
-DATE_TIME_RE = re.compile(
-    r"\b"
-    r"(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun),"  # Day of the week
-    r"\s"  # Space
-    r"\d{1,2}"  # One or two digits for the day
-    r"\s"  # Space
-    r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"  # Month abbreviation
-    r"\s"  # Space
-    r"\d{4}"  # Four digits for the year
-    r"\s"  # Space
-    r"\d{2}:\d{2}:\d{2}"  # Time in HH:MM:SS format
-    r"\s"  # Space
-    r"[+-]\d{4}"  # Time zone offset in +0000 or -0000 format
-    r"\b"
-)
-
-# for file validation (import)
-
-
-def quick_parse(email_bytes) -> (EmailMessage, str):
-    email_str = _parse_raw(email_bytes=email_bytes)
+def quick_parse(email_bytes) -> tuple[EmailMessage, str]:
+    email_str = _decode_bytes(email_bytes=email_bytes)
 
     # noinspection PyTypeChecker
-    email_message: EmailMessage = email.message_from_string(
+    email_message: EmailMessage = message_from_string(
         email_str, _class=EmailMessage, policy=policy.default)
     return email_message, email_str
 
@@ -56,17 +35,17 @@ def quick_parse(email_bytes) -> (EmailMessage, str):
 def parse(email_bytes: bytes) -> Email:
     email_message, email_str = quick_parse(email_bytes)
 
-    is_valid = _validate_email(email_message)
-    if not is_valid:
+    if not _is_valid_email(email_message):
         raise InvalidEmailException
 
-    utc_date = _parse_date(email_message)
+    utc_date = _get_message_date(email_message)
     model = Email(
         size_in_bytes=len(email_bytes),
         message_id=_parse_message_id(email_message),
-        date=utc_date.strftime(TIMESTAMP_FORMAT),
+        date=utc_date,
         timestamp=int(datetime.timestamp(utc_date))
     )
+    model.message_id
 
     if any(header in email_message for header in JournalingHeader.list()):
         try:
@@ -92,60 +71,11 @@ def parse(email_bytes: bytes) -> Email:
     return model
 
 
-def _parse_raw(email_bytes: bytes):
-    try:
-        email_str = email_bytes.decode('utf-8')
-    except UnicodeDecodeError:
-        email_str = _decode_content(encoding=None, raw_content=email_bytes)
+def _is_valid_email(email_message: EmailMessage) -> bool:
+    """
+    Message is valid if it contains body or at least one of (Date:|Received:) headers
+    """
 
-    if "<[" in email_str and "]>" in email_str:
-        email_str = email_str.replace("<[", "<")
-        email_str = email_str.replace("]>", ">")
-
-    return email_str
-
-
-def _get_original_messages(email_message: EmailMessage, header_name: str = 'message-id'):
-    nested_messages = []
-
-    for part in email_message.iter_parts():
-        if part.get_content_type() not in ContentTypes.list():
-            continue
-
-        if part.is_multipart():
-            for payload in part.get_payload():
-                header_value = payload.get(header_name, None)
-
-                if header_value:
-                    nested_messages.append(part)
-        else:
-            payload = part.get_payload()
-            headers = _get_header(payload, header_name)
-
-            for header_value in headers:
-                if header_value:
-                    nested_messages.append(part)
-
-    return nested_messages
-
-
-def _parse_date(email_message: EmailMessage) -> datetime:
-    # Get date from Date header
-    email_date = email_message.get_all('date', [])
-    for date in email_date:
-        if date.datetime:
-            return date.datetime.astimezone(timezone.utc)
-
-    # If date still not found, try to retrieve it from "Received header"
-    received_header = email_message.get_all('received', [])
-    for header in received_header:
-        if date_match := DATE_TIME_RE.findall(header):
-            return datetime.strptime(date_match[0], '%a, %d %b %Y %H:%M:%S %z')
-
-    raise DateNotFoundException
-
-
-def _validate_email(email_message: EmailMessage) -> bool:
     body = _parse_body(email_message)
     date_header = email_message.get_all('date', [])
     received_header = email_message.get_all('received', [])
@@ -171,12 +101,12 @@ def _populate_model(model: Email, email_message: EmailMessage, raw_message: str)
         model.previous_body = prev_body
 
     if prev_body:
-        prev_date = _parse_previous_date(prev_body)
-        if prev_date:
+        prev_date_str = _parse_previous_date(prev_body)
+        if prev_date_str:
             try:
-                date = dateutil.parser.parse(prev_date)
-                model.previous_date = date.strftime(TIMESTAMP_FORMAT)
-                model.previous_timestamp = int(datetime.timestamp(date))
+                model.previous_date = dateutil.parser.parse(prev_date_str)
+                model.previous_timestamp = int(
+                    datetime.timestamp(model.previous_date))
                 model.ttr = int(
                     (model.timestamp - model.previous_timestamp) / 60)
                 if model.ttr < 0:

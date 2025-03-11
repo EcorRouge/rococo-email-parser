@@ -1,9 +1,11 @@
 import json
-
 import pytest
+import dateutil.parser
+import datetime
 
-from rococo.models import Attachment, Email
-from rococo.parsers.email import parse
+from rococo.models import Attachment
+import rococo.parsers.email as parser
+
 from utils import list_files, read_local_file
 
 DATA_DIR = "data"
@@ -16,18 +18,14 @@ def test_parser(eml_file: str):
     eml_bytes = read_local_file(f"{DATA_DIR}/{eml_file}")
     expected_str = read_local_file(f"{DATA_DIR}/{filename}.json")
 
-    email = parse(eml_bytes)
+    email = parser.parse(eml_bytes)
     expected = json.loads(expected_str)
 
-    assert email.subject == expected["subject"]
     assert email.subject == expected.get('subject')
     assert email.from_.model_dump() == expected.get('from_')
     assert [to.model_dump() for to in email.to] == expected.get('to')
     assert [cc.model_dump() for cc in email.cc] == expected.get('cc')
     assert [bcc.model_dump() for bcc in email.bcc] == expected.get('bcc')
-
-#    if expected.get('body'):
-#        assert email.body == expected.get('body')
 
     if expected.get('current_body'):
         assert email.current_body == expected.get('current_body')
@@ -57,7 +55,10 @@ def test_parser(eml_file: str):
         assert type(email.message_id) is str
         assert len(email.message_id) > 0
 
-    assert email.date == expected.get('date')
+    if expected.get('date'):
+        utc_date = dateutil.parser.parse(expected.get('date'))
+        assert email.date == utc_date
+
     assert len(email.attachments) == len(expected.get('attachments'))
 
     expected_keys = Attachment().model_dump().keys()
@@ -65,5 +66,6 @@ def test_parser(eml_file: str):
     for attachment in email.attachments:
         actual_attachment = attachment.model_dump()
         assert all(k in expected_keys for k in actual_attachment.keys())
-        actual_attachment.pop('hash')
-        assert actual_attachment in expected.get('attachments')
+
+        assert {"name": actual_attachment.get("name"), "content_transfer_encoding": actual_attachment.get(
+            "content_transfer_encoding"), "content_type": actual_attachment.get("content_type")} in expected.get('attachments')

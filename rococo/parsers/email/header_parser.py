@@ -3,6 +3,7 @@ import hashlib
 import logging
 from email.header import decode_header
 from email import utils
+from email.message import EmailMessage
 from email.headerregistry import Address
 from typing import List
 
@@ -11,21 +12,30 @@ from rococo.models import EmailAddress
 logger = logging.getLogger(__name__)
 
 
-def _parse_message_id(email_message) -> str:
-    if 'message-id' not in email_message or not email_message.get('message-id'):
+def _parse_message_id(message: EmailMessage) -> str:
+    """
+    Extracts a unique message id from the email. If no header found - generates it from message hash
+
+    :param message: Email message
+    :return: string, detected message id
+    """
+    if 'message-id' not in message or not message.get('message-id'):
         message_id = utils.make_msgid(hashlib.sha256(
-            str(email_message).encode()).hexdigest())
+            str(message).encode()).hexdigest())
         logger.info(
             f'No message id found in email, generated a new one: {message_id}')
-        email_message["message-id"] = message_id
+        message["message-id"] = message_id
 
-    return email_message.get('message-id')
-
-# Parses O365 antispam headers to detect message category
-# Takes X-Forefront-Antispam-Report header value as an input
+    return message.get('message-id')
 
 
 def _parse_antispam_report_o365(report: str) -> str:
+    """
+    Parses antispam report string from O365
+
+    :param report: Value of O365 antispam header (X-Forefront-Antispam-Report)
+    :return: Email category ('Spam'|...|None)
+    """
     pairs = report.split(';')
     for pair in pairs:
         keyval = pair.split(':')
@@ -39,19 +49,22 @@ def _parse_antispam_report_o365(report: str) -> str:
 
     return None
 
-# Parses antispam headers to detect message category
-# Takes email message as an input, extracts necessary headers and parses their values
-# Returns cateory: "Spam"|None. (To implement - Social, Promotion, others)
 
+def _parse_antispam_report(message: EmailMessage) -> str:
+    """
+    Parses antispam headers to detect message category. (Now understands only O365 and Spam. To implement - Social, Promotion, others)
 
-def _parse_antispam_report(email_message) -> str:
-    if o365 := email_message.get('X-Forefront-Antispam-Report'):
+    :param message: Email message
+    :return: Email category ('Spam'|...|None) 
+    """
+    if o365 := message.get('X-Forefront-Antispam-Report'):
         return _parse_antispam_report_o365(o365)
 
     return None
 
 
 def _get_header(text_payload: str, header_name: str):
+
     header_list = []
     text_payload_lower = text_payload.lower()
 
@@ -103,7 +116,7 @@ def _decode_headers(headers):
     return formatted_headers
 
 
-def _parse_from(email_message, raw_message: str, header_name: str = 'from') -> (EmailAddress, None):
+def _parse_from(email_message, raw_message: str, header_name: str = 'from') -> (EmailAddress | None):
     try:
         if email_message.get(header_name):
             email_from: Address = email_message.get(header_name).addresses[0]

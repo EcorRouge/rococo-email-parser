@@ -1,10 +1,6 @@
-from .parser import parse, quick_parse
-from .body_parser import _parse_plain_replies, _parse_html_replies, _parse_previous_date
+from .parser import quick_parse, parse
 
 __all__ = [
     quick_parse,
-    parse,
-    _parse_previous_date,
-    _parse_plain_replies,
-    _parse_html_replies
+    parse
 ]

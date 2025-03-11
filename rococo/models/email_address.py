@@ -4,5 +4,16 @@ from pydantic import BaseModel
 
 
 class EmailAddress(BaseModel):
-    name: Optional[str]
-    address: Optional[str]
+    """
+    Defines an email address
+    """
+
+    name: Optional[str] = None
+    """
+    Person name
+    """
+
+    address: Optional[str] = None
+    """
+    Email address
+    """

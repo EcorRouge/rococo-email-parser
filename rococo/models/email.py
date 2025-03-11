@@ -1,84 +1,100 @@
-import hashlib
 import json
 from datetime import datetime
-from typing import Optional, List, Dict
-import logging
+from typing import Optional, List
+from pydantic import BaseModel
 
-from pydantic import BaseModel, Field
-
-from rococo.models import EmailAddress, Attachment, TargetedSentiment
-
-logger = logging.getLogger(__name__)
+from rococo.models import EmailAddress, Attachment
 
 
 class Email(BaseModel):
-    message_id: Optional[str] = Field(
-        serialization_alias='MessageID', default=None)
+    """
+    Defines a message
+    """
 
-    to: Optional[List[EmailAddress]] = Field(
-        serialization_alias='To', default=[])
-    from_: Optional[EmailAddress] = Field(
-        serialization_alias='From', default=None)
-    cc: Optional[List[EmailAddress]] = Field(
-        serialization_alias='CC', default=[])
-    bcc: Optional[List[EmailAddress]] = Field(
-        serialization_alias='BCC', default=[])
-    subject: Optional[str] = Field(serialization_alias='Subject', default=None)
+    message_id: Optional[str] = None
+    """
+    Unique message id
+    """
 
-    body: Optional[str] = Field(serialization_alias='Body', default=None,
-                                deprecated="Use current_body and previous_body fields")
-    html: Optional[str] = Field(serialization_alias='BodyHTML', default=None,
-                                deprecated="Use current_body_html and previous_body_html fields")
+    to: Optional[List[EmailAddress]] = []
+    """
+    List of recepients
+    """
 
-    attachments: Optional[List[Attachment]] = Field(
-        serialization_alias='Attachments', default=[])
+    from_: Optional[EmailAddress] = []
+    """
+    Sender address
+    """
 
-    current_body: Optional[str] = Field(
-        serialization_alias='CurrentBody', default=None)
-    current_body_html: Optional[str] = Field(
-        serialization_alias='CurrentBodyHTML', default=None)
+    cc: Optional[List[EmailAddress]] = []
+    """
+    List of copy(CC) recepients
+    """
 
-    previous_body: Optional[str] = Field(
-        serialization_alias='PreviousBody', default=None)
-    previous_body_html: Optional[str] = Field(
-        serialization_alias='PreviousBodyHTML', default=None)
+    bcc: Optional[List[EmailAddress]] = []
+    """
+    List of shadow copy(BCC) recepients
+    """
 
-    # (in, out, none to represent whether it was an incoming email, outgoing email, or internal-only, respectively)
-    direction: Optional[str] = Field(
-        serialization_alias='Direction', default=None)
-    # (internal, external to represent who the email was sent to)
-    audience: Optional[str] = Field(
-        serialization_alias='Audience', default=None)
-    # (negative, neutral, positive to represent the overall sentiment of the email)
-    sentiment: Optional[str] = Field(
-        serialization_alias='Sentiment', default=None)
-    # (a list of entities and their related sentiment)
-    targeted_sentiment: Optional[List[TargetedSentiment]] = Field(
-        serialization_alias='TargetedSentiment', default=[])
-    # (the number of minutes between the original email and this reply, aka time-to-reply)
-    ttr: Optional[int] = Field(serialization_alias='TTR', default=None)
-    # (the number of minutes within business hours between the original email and this reply. This means factoring in the time of day, day of week, and holidays)
-    business_hour_ttr: Optional[int] = Field(
-        serialization_alias='BusinessHourTTR', default=None)
-    # (spam, promotion, social, others)
-    category: Optional[str] = Field(
-        serialization_alias='Category', default=None)
+    subject: Optional[str] = None
+    """
+    Message subject
+    """
 
-    date: Optional[str] = Field(serialization_alias='Date', default=None)
-    timestamp: Optional[int] = Field(
-        serialization_alias='timestamp', default=None)
+    attachments: Optional[List[Attachment]] = []
+    """
+    Message attachment
+    """
 
-    # datetime (in ES format) of the previous message
-    previous_date: Optional[str] = Field(
-        serialization_alias='PreviousDate', default=None)
-    # timestamp of the previous message
-    previous_timestamp: Optional[int] = Field(
-        serialization_alias='PreviousTimestamp', default=None)
+    current_body: Optional[str] = None
+    """
+    Current plain-text body (without original message, if it's a reply or forwarded message)
+    """
 
-    size_in_bytes: Optional[int] = Field(
-        serialization_alias='SizeBytes', default=0)
-    s3_storage_zip: Optional[str] = Field(
-        serialization_alias='S3StorageZip', default=None)
+    current_body_html: Optional[str] = None
+    """
+    Current html body (without original message, if it's a reply or forwarded message)
+    """
+
+    previous_body: Optional[str] = None
+    """
+    Previous plain-text bodies (concatenated)
+    """
+
+    previous_body_html: Optional[str] = None
+    """
+    Previous html bodies (concatenated)
+    """
+
+    ttr: Optional[int] = 0
+    """
+    The number of minutes between the original email and this reply, aka time-to-reply
+    """
+
+    business_hour_ttr: Optional[int] = 0
+    """
+    The number of minutes within business hours between the original email and this reply. This means factoring in the time of day, day of week, and holidays
+    """
+
+    category: Optional[str] = None
+    """
+    Message category - Spam, Promotion, Social, Others
+    """
+
+    date: Optional[datetime] = None
+    """
+    Message date
+    """
+
+    previous_date: Optional[datetime] = None
+    """
+    Previous message date
+    """
+
+    size_in_bytes: Optional[int] = 0
+    """
+    Message size in bytes
+    """
 
     def __str__(self) -> str:
         return self.message_id

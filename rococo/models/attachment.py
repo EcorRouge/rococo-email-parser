@@ -1,14 +1,36 @@
-from typing import Optional, Any
-
-from pydantic import BaseModel, Field
+from typing import Optional
+from pydantic import BaseModel
 
 
 class Attachment(BaseModel):
-    name: Optional[str] = Field(serialization_alias='Name', default=None)
-    hash: Optional[str] = Field(serialization_alias='Hash', default=None)
-    content_transfer_encoding: Optional[str] = Field(serialization_alias='ContentTransferEncoding', default=None)
-    content_type: Optional[str] = Field(serialization_alias='ContentType', default=None)
-    payload: Optional[str] = Field(exclude=True, default=None)
+    """
+    Defines a message attachment
+    """
+
+    name: Optional[str] = None
+    """
+    Attachment name
+    """
+
+    hash: Optional[str] = None
+    """
+    Content hash (SHA-256)
+    """
+
+    content_transfer_encoding: Optional[str] = None
+    """
+    Content transfer encoding
+    """
+
+    content_type: Optional[str] = None
+    """
+    Content type (MIME)
+    """
+
+    payload: Optional[str] = None
+    """
+    Attachment payload
+    """
 
     def __str__(self):
         return f"name: {self.name}, hash: {self.hash}, content_type: {self.content_type}"

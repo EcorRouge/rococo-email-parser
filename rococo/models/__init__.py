@@ -4,7 +4,6 @@ from .enums import (
 )
 from .email_address import EmailAddress
 from .attachment import Attachment
-from .targeted_sentiment import TargetedSentiment
 from .email import Email
 
 __all__ = [
@@ -13,5 +12,4 @@ __all__ = [
     Attachment,
     EmailAddress,
     Email,
-    TargetedSentiment,
 ]

@@ -1,9 +1,10 @@
 from enum import Enum
-from typing import List
+
 
 class CompatibleStrEnum(str, Enum):
     def __str__(self):
         return self.value
+
 
 class ContentTypes(CompatibleStrEnum):
     """
@@ -32,5 +33,3 @@ class JournalingHeader(CompatibleStrEnum):
     @classmethod
     def list(cls):
         return list(map(lambda h: h.value, cls))
-
-

@@ -9,6 +9,15 @@ logger = logging.getLogger(__name__)
 
 
 def _parse_attachments(email_message: EmailMessage) -> List[Attachment]:
+    """
+    Parses message attachments.
+    Doesn't throw parse exceptions, only logs them.
+    Attachments which cannot be parsed will not be included in the resulting list
+
+    :param email_message: Email message
+    :return: List of attachments
+    """
+
     attachments: List[Attachment] = []
     for part in email_message.iter_attachments():
         try:
@@ -22,7 +31,8 @@ def _parse_attachments(email_message: EmailMessage) -> List[Attachment]:
 
                 attachment = Attachment(
                     name=filename,
-                    hash=hashlib.sha256(part.as_string().encode()).hexdigest(),
+                    hash=hashlib.sha256(
+                        part.as_string().encode()).hexdigest(),
                     content_transfer_encoding=part.get(
                         'Content-Transfer-Encoding'),
                     content_type=part.get_content_type(),
