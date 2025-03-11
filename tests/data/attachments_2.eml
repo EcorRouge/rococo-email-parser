@@ -1,0 +1,26 @@
+From: outer@example.com
+To: recipient@example.com
+Date: Sun, 21 Jan 2024 12:56:14 -0800
+Subject: Outer Email with Embedded .eml
+Message-ID: <1ec73394-e4ca-4227-8ecc-b987e8f0e3d1@journal.report.generator>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============3471051701328692936=="
+
+--===============3471051701328692936==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+This email contains another .eml as an attachment.
+
+--===============3471051701328692936==
+Content-Type: message/rfc822
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="inner_email.eml"
+MIME-Version: 1.0
+
+RnJvbTogaW5uZXJAZXhhbXBsZS5jb20KVG86IHJlY2lwaWVudEBleGFtcGxlLmNvbQpTdWJqZWN0
+OiBJbm5lciBFbWFpbApDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9InV0Zi04IgpD
+b250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiA3Yml0Ck1JTUUtVmVyc2lvbjogMS4wCgpUaGlzIGlz
+IHRoZSBjb250ZW50IG9mIHRoZSBpbm5lciBlbWFpbC4K
+
+--===============3471051701328692936==--
