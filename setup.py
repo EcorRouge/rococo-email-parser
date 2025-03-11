@@ -16,7 +16,8 @@ setup(
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     install_requires=[
-        'pydantic>=2.1.0',
+        'pydantic<3.0.0,>=2.1.0',
+        'python-dateutil<3.0.0,>=2.1.0',
         'beautifulsoup4==4.12.2'
     ],
     python_requires=">=3.10"
