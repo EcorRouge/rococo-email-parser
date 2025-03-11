@@ -1,7 +1,6 @@
 import json
 import pytest
 import dateutil.parser
-import datetime
 
 from rococo.models import Attachment
 import rococo.parsers.email as parser

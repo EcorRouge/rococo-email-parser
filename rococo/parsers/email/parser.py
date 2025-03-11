@@ -23,7 +23,12 @@ from .header_parser import (
 )
 
 
-def quick_parse(email_bytes) -> tuple[EmailMessage, str]:
+def load_eml_bytes(email_bytes) -> tuple[EmailMessage, str]:
+    """
+    Load message from bytes in eml format
+
+    :return: EmailMessage and raw string with eml content
+    """
     email_str = _decode_bytes(email_bytes=email_bytes)
 
     # noinspection PyTypeChecker
@@ -33,7 +38,13 @@ def quick_parse(email_bytes) -> tuple[EmailMessage, str]:
 
 
 def parse(email_bytes: bytes) -> Email:
-    email_message, email_str = quick_parse(email_bytes)
+    """
+    Parse message from bytes in eml format
+
+    :return: parsed Email
+    """
+
+    email_message, email_str = load_eml_bytes(email_bytes)
 
     if not _is_valid_email(email_message):
         raise InvalidEmailException
