@@ -1,6 +1,6 @@
-from .parser import quick_parse, parse
+from .parser import load_eml_bytes, parse
 
 __all__ = [
-    quick_parse,
+    load_eml_bytes,
     parse
 ]
