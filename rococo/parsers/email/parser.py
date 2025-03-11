@@ -22,6 +22,8 @@ from .header_parser import (
     _get_header, _parse_message_id, _parse_bcc, _parse_from, _parse_to, _parse_cc, _parse_antispam_report
 )
 
+TIMESTAMP_FORMAT = '%d-%m-%Y %H:%M:%S'
+
 # Sample date record catered in the pattern: Sat, 5 Jul 2020 18:13:51 +0000
 DATE_TIME_RE = re.compile(
     r"\b"
@@ -40,11 +42,14 @@ DATE_TIME_RE = re.compile(
 )
 
 # for file validation (import)
+
+
 def quick_parse(email_bytes) -> (EmailMessage, str):
     email_str = _parse_raw(email_bytes=email_bytes)
 
     # noinspection PyTypeChecker
-    email_message: EmailMessage = email.message_from_string(email_str, _class=EmailMessage, policy=policy.default)
+    email_message: EmailMessage = email.message_from_string(
+        email_str, _class=EmailMessage, policy=policy.default)
     return email_message, email_str
 
 
@@ -59,7 +64,7 @@ def parse(email_bytes: bytes) -> Email:
     model = Email(
         size_in_bytes=len(email_bytes),
         message_id=_parse_message_id(email_message),
-        date=utc_date.strftime(settings.ES_TIMESTAMP_FORMAT),
+        date=utc_date.strftime(TIMESTAMP_FORMAT),
         timestamp=int(datetime.timestamp(utc_date))
     )
 
@@ -67,7 +72,8 @@ def parse(email_bytes: bytes) -> Email:
         try:
             nested_messages = _get_original_messages(email_message)
         except Exception:
-            _populate_model(model=model, email_message=email_message, raw_message=email_str)
+            _populate_model(
+                model=model, email_message=email_message, raw_message=email_str)
             return model
 
         for nested_message in nested_messages:
@@ -77,9 +83,11 @@ def parse(email_bytes: bytes) -> Email:
             if nested_message.get_content_type() == ContentTypes.text_plain:
                 model.extend('bcc', _parse_bcc(nested_message))
             if nested_message.get_content_type() == ContentTypes.forwarding_content_type:
-                _populate_model(model=model, email_message=nested_message.get_content(), raw_message=email_str)
+                _populate_model(
+                    model=model, email_message=nested_message.get_content(), raw_message=email_str)
     else:
-        _populate_model(model=model, email_message=email_message, raw_message=email_str)
+        _populate_model(model=model, email_message=email_message,
+                        raw_message=email_str)
 
     return model
 
@@ -149,13 +157,13 @@ def _populate_model(model: Email, email_message: EmailMessage, raw_message: str)
     model.from_ = _parse_from(email_message, raw_message)
 
     model.category = _parse_antispam_report(email_message)
-    
+
     model.extend('to', _parse_to(email_message))
     model.extend('cc', _parse_cc(email_message))
     model.extend('bcc', _parse_bcc(email_message))
 
     (body, cur_body, prev_body) = _parse_body(email_message)
-        
+
     if cur_body is None:
         model.current_body = body
     else:
@@ -167,9 +175,10 @@ def _populate_model(model: Email, email_message: EmailMessage, raw_message: str)
         if prev_date:
             try:
                 date = dateutil.parser.parse(prev_date)
-                model.previous_date = date.strftime(settings.ES_TIMESTAMP_FORMAT)
-                model.previous_timestamp=int(datetime.timestamp(date))
-                model.ttr = int((model.timestamp - model.previous_timestamp) / 60)
+                model.previous_date = date.strftime(TIMESTAMP_FORMAT)
+                model.previous_timestamp = int(datetime.timestamp(date))
+                model.ttr = int(
+                    (model.timestamp - model.previous_timestamp) / 60)
                 if model.ttr < 0:
                     model.ttr = 0
             except:

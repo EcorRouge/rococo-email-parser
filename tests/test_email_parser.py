@@ -4,18 +4,17 @@ import pytest
 
 from rococo.models import Attachment, Email
 from rococo.parsers.email import parse
-import tests.utils as utils
+from utils import list_files, read_local_file
 
-settings.ES_TIMESTAMP_FORMAT = '%d-%m-%Y %H:%M:%S'
 DATA_DIR = "data"
 
 
-@pytest.mark.parametrize("eml_file", utils.list_files(DATA_DIR, ".eml"))
+@pytest.mark.parametrize("eml_file", list_files(DATA_DIR, ".eml"))
 def test_parser(eml_file: str):
     filename = eml_file.replace(".eml", "")
 
-    eml_bytes = utils.read_local_file(f"{DATA_DIR}/{eml_file}")
-    expected_str = utils.read_local_file(f"{DATA_DIR}/{filename}.json")
+    eml_bytes = read_local_file(f"{DATA_DIR}/{eml_file}")
+    expected_str = read_local_file(f"{DATA_DIR}/{filename}.json")
 
     email = parse(eml_bytes)
     expected = json.loads(expected_str)

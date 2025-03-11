@@ -14,10 +14,6 @@ logger = logging.getLogger(__name__)
 class Email(BaseModel):
     message_id: Optional[str] = Field(
         serialization_alias='MessageID', default=None)
-    entity_id: Optional[str] = Field(
-        serialization_alias='EntityID', default=None)
-    organization_id: Optional[str] = Field(
-        serialization_alias='OrganizationID', default=None)
 
     to: Optional[List[EmailAddress]] = Field(
         serialization_alias='To', default=[])
@@ -79,19 +75,13 @@ class Email(BaseModel):
     previous_timestamp: Optional[int] = Field(
         serialization_alias='PreviousTimestamp', default=None)
 
-    created_date: Optional[str] = Field(
-        serialization_alias='CreatedDate', default_factory=lambda: f'{datetime.utcnow().isoformat(timespec="seconds")}Z'
-    )
     size_in_bytes: Optional[int] = Field(
         serialization_alias='SizeBytes', default=0)
     s3_storage_zip: Optional[str] = Field(
         serialization_alias='S3StorageZip', default=None)
 
     def __str__(self) -> str:
-        hash = hashlib.sha256(self.message_id.encode()).hexdigest()
-        _id = f"{self.organization_id}_{self.timestamp}_{hash}"
-        logger.info(f"email _id: {_id}")
-        return _id
+        return self.message_id
 
     def __repr__(self) -> str:
         return json.dumps(self.model_dump())
@@ -105,10 +95,3 @@ class Email(BaseModel):
 
         if field_name == 'bcc':
             self.bcc.extend(a for a in addresses if a not in self.bcc)
-
-    def update_identifier(self, entity_id: str, s3_key: str):
-        self.entity_id = entity_id
-
-        s3_key_parts = s3_key.split("/")
-        self.organization_id = s3_key_parts[1]
-        self.s3_storage_zip = s3_key

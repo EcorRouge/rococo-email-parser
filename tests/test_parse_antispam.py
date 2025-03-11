@@ -1,5 +1,6 @@
 import pytest
-from common.parsers.email_parser.header_parser import _parse_antispam_report_o365
+from rococo.parsers.email.header_parser import _parse_antispam_report_o365
+
 
 def test_parse_o365_headers():
     category = _parse_antispam_report_o365("CIP:209.85.222.173;CTRY:US;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:mail-qk1-f173.google.com;PTR:mail-qk1-f173.google.com;CAT:NONE;SFS:(13230031)(230922051799003)(451199024)(109986022)(5660300002)(22186003)(42186006)(8676002)(1096003)(9686003)(336012)(26005)(6666004)(33964004)(58800400005)(86362001)(7596003)(356005)(55446002)(7636003)(564344004)(83380400001)(127190200002);DIR:INB;")

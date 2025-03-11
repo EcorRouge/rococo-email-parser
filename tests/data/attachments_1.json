@@ -1,0 +1,29 @@
+{
+  "message_id": "<1fb92201-4850-4668-827f-e729ba2a5dcc@Spark>",
+  "to": [
+    {
+      "name": "",
+      "address": "recipient@example.com"
+    }
+  ],
+  "from_": {
+    "name": "",
+    "address": "test@example.com"
+  },
+  "cc": [],
+  "bcc": [],
+  "subject": "Test Email with PNG and JPG Attachments",
+  "attachments": [
+    {
+      "name": "test_image.png",
+      "content_transfer_encoding": "base64",
+      "content_type": "image/png"
+    },
+    {
+      "name": "test_image.jpg",
+      "content_transfer_encoding": "base64",
+      "content_type": "image/jpeg"
+    }
+  ],
+  "date": "21-01-2024 20:56:14"
+}
