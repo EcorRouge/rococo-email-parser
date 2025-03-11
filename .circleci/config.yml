@@ -19,6 +19,9 @@ jobs:
           pkg-manager: pip
           pypi-cache: false
       - run:
+          name: Install project as package
+          command: pip install -e .
+      - run:
           name: Run tests
           command: pytest --junitxml=junit.xml || ((($? == 5)) && echo 'Did not find any tests to run.')
       - store_test_results:
