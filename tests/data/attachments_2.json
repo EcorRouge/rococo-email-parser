@@ -1,0 +1,24 @@
+{
+  "message_id": "<1ec73394-e4ca-4227-8ecc-b987e8f0e3d1@journal.report.generator>",
+  "to": [
+    {
+      "name": "",
+      "address": "recipient@example.com"
+    }
+  ],
+  "from_": {
+    "name": "",
+    "address": "outer@example.com"
+  },
+  "cc": [],
+  "bcc": [],
+  "subject": "Outer Email with Embedded .eml",
+  "attachments": [
+    {
+      "name": "inner_email.eml",
+      "content_transfer_encoding": "base64",
+      "content_type": "message/rfc822"
+    }
+  ],
+  "date": "21-01-2024 20:56:14"
+}
