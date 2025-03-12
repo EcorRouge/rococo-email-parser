@@ -16,6 +16,9 @@ pip install rococo-email-parser
 ```
 import rococo.parsers.email as parser
 
+file_path="sample.eml"
+mode="rb"
+
 with open(file_path, mode) as f:
     content = f.read()
 
