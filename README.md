@@ -1,6 +1,6 @@
 # rococo-email-parser
 
-[![Build Status][build_status_badge]][build_status_link]
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/EcorRouge/rococo-email-parser/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/EcorRouge/rococo-email-parser/tree/main)
 [![PyPI version][pypi_badge]][pypi_link]
 
 A Python library to parse emails
@@ -73,7 +73,5 @@ To install local Rococo version in other project, upload to your PyPi:
 3) run the command: twine upload --config-file=./.pypirc dist/*  
 
 
-[build_status_badge]: https://github.com/EcorRouge/rococo-email-parser/actions/workflows/release-publish.yml/badge.svg
-[build_status_link]: https://github.com/EcorRouge/rococo-email-parser/actions/workflows/release-publish.yml
 [pypi_badge]: https://badge.fury.io/py/rococo-email-parser.svg
 [pypi_link]: https://badge.fury.io/py/rococo-email-parser
