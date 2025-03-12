@@ -6,8 +6,8 @@ setup(
     packages=find_packages(),
     url='https://github.com/EcorRouge/rococo-email-parser',
     license='MIT',
-    author='Jay Grieves',
-    author_email='jaygrieves@gmail.com',
+    author='Mikhail Burilov',
+    author_email='burilovmv@gmail.com',
     description='A Python library to parse emails',
     entry_points={
         'console_scripts': [

@@ -39,14 +39,14 @@ This branch is likely used for ongoing development work.
 
 When the team is ready to test a potential release, they push the code to a staging branch.
 Once the code is pushed to this branch, _GitHub Actions_ automatically publishes the package to the test PyPi server.
-The package can then be reviewed and tested by visiting <https://test.pypi.org/project/rococo/>.
+The package can then be reviewed and tested by visiting <https://test.pypi.org/project/rococo-email-parser/>.
 This step ensures that the package works as expected on the PyPi platform without affecting the live package.
 
 ### Release/Publish Phase
 
 When the team is satisfied with the testing and wants to release the package to the public, they create and publish a release on the GitHub repository.
 Following this action, _GitHub Actions_ takes over and automatically publishes the package to the official PyPi server.
-The package can then be accessed and downloaded by the public at <https://pypi.org/project/rococo/>.
+The package can then be accessed and downloaded by the public at <https://pypi.org/project/rococo-email-parser/>.
 
 In essence, there are three primary phases:
 
