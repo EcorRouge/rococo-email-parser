@@ -8,7 +8,7 @@ from rococo.models import Attachment
 logger = logging.getLogger(__name__)
 
 
-def _parse_attachments(email_message: EmailMessage) -> List[Attachment]:
+def _parse_attachments(message_id, email_message: EmailMessage) -> List[Attachment]:
     """
     Parses message attachments.
     Doesn't throw parse exceptions, only logs them.
@@ -29,16 +29,20 @@ def _parse_attachments(email_message: EmailMessage) -> List[Attachment]:
                     content_type = f"{part.get_content_maintype()}-{part.get_content_subtype()}"
                     filename = f"{ap.get('subject') or ap.get('message-id') or content_type}.eml"
 
-                attachment = Attachment(
-                    name=filename,
-                    hash=hashlib.sha256(
-                        part.as_string().encode()).hexdigest(),
-                    content_transfer_encoding=part.get(
-                        'Content-Transfer-Encoding'),
-                    content_type=part.get_content_type(),
-                    payload=part.as_string()
-                )
-                attachments.append(attachment)
+                try:
+                    attachment = Attachment(
+                        name=filename,
+                        hash=hashlib.sha256(
+                            part.as_string().encode()).hexdigest(),
+                        content_transfer_encoding=part.get(
+                            'Content-Transfer-Encoding'),
+                        content_type=part.get_content_type(),
+                        payload=part.as_string()
+                    )
+                    attachments.append(attachment)
+                except Exception as pe:
+                    logger.error(
+                        f"Error parsing part of message {message_id}: {pe}")
             else:
                 filename = part.get_filename()
                 if not filename:
@@ -55,7 +59,7 @@ def _parse_attachments(email_message: EmailMessage) -> List[Attachment]:
                 )
                 attachments.append(attachment)
         except Exception as e:
-            logger.exception(e)
+            logger.error(f"Error parsing message {message_id}: {e}")
             continue
 
     return attachments

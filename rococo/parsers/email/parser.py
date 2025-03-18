@@ -133,7 +133,7 @@ def _populate_model(model: Email, email_message: EmailMessage, raw_message: str)
         model.current_body_html = cur_html
         model.previous_body_html = prev_html
 
-    model.attachments = _parse_attachments(email_message)
+    model.attachments = _parse_attachments(model.message_id, email_message)
 
     model.subject = email_message.get('subject')
 
