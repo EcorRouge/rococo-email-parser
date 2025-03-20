@@ -1,4 +1,5 @@
 import hashlib
+from email.policy import EmailPolicy
 from email.message import EmailMessage
 from typing import List
 import logging
@@ -30,14 +31,16 @@ def _parse_attachments(message_id, email_message: EmailMessage) -> List[Attachme
                     filename = f"{ap.get('subject') or ap.get('message-id') or content_type}.eml"
 
                 try:
+                    payload = part.as_string(policy=EmailPolicy(verify_generated_headers=False))
+
                     attachment = Attachment(
                         name=filename,
                         hash=hashlib.sha256(
-                            part.as_string().encode()).hexdigest(),
+                            payload.encode()).hexdigest(),
                         content_transfer_encoding=part.get(
                             'Content-Transfer-Encoding'),
                         content_type=part.get_content_type(),
-                        payload=part.as_string()
+                        payload=payload
                     )
                     attachments.append(attachment)
                 except Exception as pe:
