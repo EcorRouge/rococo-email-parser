@@ -19,15 +19,20 @@ def _parse_message_id(message: EmailMessage) -> str:
     :param message: Email message
     :return: string, detected message id
     """
-    if 'message-id' not in message or not message.get('message-id'):
-        message_id = utils.make_msgid(hashlib.sha256(
-            str(message).encode()).hexdigest())
-        logger.info(
-            f'No message id found in email, generated a new one: {message_id}')
-        message["message-id"] = message_id
+    current_id = message.get('message-id')
 
-    return message.get('message-id')
+    if not current_id or current_id.strip() in ('<>', ''):
+        if 'message-id' in message:
+            del message['message-id']
 
+        hash_input = str(message).encode()
+        current_id = utils.make_msgid(hashlib.sha256(hash_input).hexdigest())
+
+        logger.info(f'No message id found in email, generated a new one: {current_id}')
+
+        message["message-id"] = current_id
+
+    return current_id
 
 def _parse_antispam_report_o365(report: str) -> str:
     """
