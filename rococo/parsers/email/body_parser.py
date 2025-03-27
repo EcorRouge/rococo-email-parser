@@ -41,7 +41,7 @@ def _parse_previous_date(previous_body: str) -> str:
 # Returns 3 strings - entire body, current message and previous message
 
 
-def _parse_plain_replies(body: str) -> (str, str, str):
+def _parse_plain_replies(body: str) -> tuple[str, str, str]:
     if body is None or body.strip() == "":
         return (body, body, None)
 
@@ -81,7 +81,7 @@ def _parse_plain_replies(body: str) -> (str, str, str):
 # Takes EmailMessage object as an argument
 
 
-def _parse_body(email_message) -> (str, str, str):
+def _parse_body(email_message) -> tuple[str, str, str]:
     text_plain = email_message.get_body(preferencelist='plain')
     if not text_plain:
         return (None, None, None)

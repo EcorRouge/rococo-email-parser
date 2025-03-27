@@ -23,3 +23,6 @@ class DateNotFoundException(EmailParserException):
 class InvalidEmailException(EmailParserException):
     message = "The email is not valid"
 
+
+class IgnorableEmailException(EmailParserException):
+    message = "The email is not valid and can be ignored"

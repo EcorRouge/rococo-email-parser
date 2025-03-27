@@ -1,3 +1,5 @@
+import logging
+import re
 from datetime import datetime
 from email import policy, message_from_string
 from email.message import EmailMessage
@@ -7,7 +9,9 @@ import dateutil.parser
 from rococo.models import Email, ContentTypes, JournalingHeader
 
 from rococo.exceptions import (
-    InvalidEmailException
+    InvalidEmailException,
+    DateNotFoundException,
+    IgnorableEmailException
 )
 
 from .attachment_parser import _parse_attachments
@@ -21,6 +25,8 @@ from .message_parser import (
 from .header_parser import (
     _parse_message_id, _parse_bcc, _parse_from, _parse_to, _parse_cc, _parse_antispam_report
 )
+
+logger = logging.getLogger(__name__)
 
 
 def load_eml_bytes(email_bytes) -> tuple[EmailMessage, str]:
@@ -37,49 +43,65 @@ def load_eml_bytes(email_bytes) -> tuple[EmailMessage, str]:
     return email_message, email_str
 
 
-def parse(email_bytes: bytes) -> Email:
+def _handle_ignorable(exception, email_message, ignorable_policy):
+    if ignorable_policy is None or email_message is None:
+        return
+
+    for header, pattern in ignorable_policy.items():
+        cur_vals = email_message.get_all(header, [])
+        for val in cur_vals:
+            if re.match(pattern, val, flags=re.IGNORECASE):
+                logger.debug(
+                    f"Ignorable email matched: {header}='{val}', pattern='{pattern}' — suppressed {exception.__class__.__name__}")
+                raise IgnorableEmailException from exception
+
+
+def parse(email_bytes: bytes, ignorable_policy: dict = None) -> Email:
     """
     Parse message from bytes in eml format
 
     :return: parsed Email
     """
+    try:
+        email_message, email_str = load_eml_bytes(email_bytes)
 
-    email_message, email_str = load_eml_bytes(email_bytes)
+        if not _is_valid_email(email_message):
+            raise InvalidEmailException
 
-    if not _is_valid_email(email_message):
-        raise InvalidEmailException
+        utc_date = _get_message_date(email_message)
+        model = Email(
+            size_in_bytes=len(email_bytes),
+            message_id=_parse_message_id(email_message),
+            date=utc_date,
+            timestamp=int(datetime.timestamp(utc_date))
+        )
+        model.message_id
 
-    utc_date = _get_message_date(email_message)
-    model = Email(
-        size_in_bytes=len(email_bytes),
-        message_id=_parse_message_id(email_message),
-        date=utc_date,
-        timestamp=int(datetime.timestamp(utc_date))
-    )
-    model.message_id
-
-    if any(header in email_message for header in JournalingHeader.list()):
-        try:
-            nested_messages = _get_original_messages(email_message)
-        except Exception:
-            _populate_model(
-                model=model, email_message=email_message, raw_message=email_str)
-            return model
-
-        for nested_message in nested_messages:
-            if nested_message.is_attachment():
-                continue
-
-            if nested_message.get_content_type() == ContentTypes.text_plain:
-                model.extend('bcc', _parse_bcc(nested_message))
-            if nested_message.get_content_type() == ContentTypes.forwarding_content_type:
+        if any(header in email_message for header in JournalingHeader.list()):
+            try:
+                nested_messages = _get_original_messages(email_message)
+            except Exception:
                 _populate_model(
-                    model=model, email_message=nested_message.get_content(), raw_message=email_str)
-    else:
-        _populate_model(model=model, email_message=email_message,
-                        raw_message=email_str)
+                    model=model, email_message=email_message, raw_message=email_str)
+                return model
 
-    return model
+            for nested_message in nested_messages:
+                if nested_message.is_attachment():
+                    continue
+
+                if nested_message.get_content_type() == ContentTypes.text_plain:
+                    model.extend('bcc', _parse_bcc(nested_message))
+                if nested_message.get_content_type() == ContentTypes.forwarding_content_type:
+                    _populate_model(
+                        model=model, email_message=nested_message.get_content(), raw_message=email_str)
+        else:
+            _populate_model(model=model, email_message=email_message,
+                            raw_message=email_str)
+
+        return model
+    except Exception as e:
+        _handle_ignorable(e, email_message, ignorable_policy)
+        raise
 
 
 def _is_valid_email(email_message: EmailMessage) -> bool:
