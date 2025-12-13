@@ -725,7 +725,7 @@ class TestParseHtml:
         
         with patch('rococo.parsers.email.body_parser._parse_content') as mock_parse_content, \
              patch('rococo.parsers.email.body_parser.BeautifulSoup') as mock_soup, \
-             patch('rococo.parsers.email.body_parser._replace_cid_images') as mock_replace, \
+             patch('rococo.parsers.email.body_parser._replace_cid_images'), \
              patch('rococo.parsers.email.body_parser._parse_html_replies_soup') as mock_parse_replies:
             
             mock_parse_content.return_value = ["<div>HTML content</div>"]
@@ -765,8 +765,8 @@ class TestParseHtml:
             return BS("<div>HTML</div>", "html.parser")
         
         with patch('rococo.parsers.email.body_parser._parse_content') as mock_parse_content, \
-             patch('rococo.parsers.email.body_parser.BeautifulSoup', side_effect=soup_side_effect) as mock_soup, \
-             patch('rococo.parsers.email.body_parser.sys.getrecursionlimit', return_value=1000) as mock_get_limit, \
+             patch('rococo.parsers.email.body_parser.BeautifulSoup', side_effect=soup_side_effect), \
+             patch('rococo.parsers.email.body_parser.sys.getrecursionlimit', return_value=1000), \
              patch('rococo.parsers.email.body_parser.sys.setrecursionlimit') as mock_set_limit, \
              patch('rococo.parsers.email.body_parser.logger') as mock_logger, \
              patch('rococo.parsers.email.body_parser._replace_cid_images'), \

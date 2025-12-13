@@ -127,8 +127,6 @@ class TestGetOriginalMessages:
         
         email_message.iter_parts.return_value = [part]
         
-        nested_messages = []
-        
         def check_multipart(part, header_name, nested_messages):
             for payload in part.get_payload():
                 if payload.get(header_name):

@@ -53,7 +53,7 @@ def _append_to_body(body: str, line: str) -> str:
     return line
 
 
-def _parse_plain_replies(body: str) -> tuple[str, str, str]:
+def _parse_plain_replies(body: str | None) -> tuple[str | None, str | None, str | None]:
     if body is None or body.strip() == "":
         return (body, body, None)
 
@@ -160,7 +160,7 @@ def _extract_outlook_quote(soup) -> str | None:
 # Takes message html body as an argument
 
 
-def _parse_html_replies(html: str) -> (str, str, str):
+def _parse_html_replies(html: str | None) -> tuple[str | None, str | None, str | None]:
     if html is None or html.strip() == "":
         return (html, html, None)
 
