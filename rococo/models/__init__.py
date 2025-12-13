@@ -7,9 +7,9 @@ from .attachment import Attachment
 from .email import Email
 
 __all__ = [
-    ContentTypes,
-    JournalingHeader,
-    Attachment,
-    EmailAddress,
-    Email,
+    "ContentTypes",
+    "JournalingHeader",
+    "Attachment",
+    "EmailAddress",
+    "Email",
 ]
