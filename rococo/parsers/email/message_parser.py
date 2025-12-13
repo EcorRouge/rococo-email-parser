@@ -45,10 +45,11 @@ def _decode_bytes(email_bytes: bytes) -> str:
         email_str = email_str.replace("]>", ">")
 
     email_str = re.sub(r'(?i)^Message-ID:\s*<\s*>\s*$', 'Message-ID:', email_str, flags=re.MULTILINE)  # Rollbar error #13028. Python email lib fails with "IndexError: list index out of range"
-    email_str = re.sub(r'(?i)^(To:\s*.+@)\s*$', INVALID_DOMAIN_REPLACEMENT, email_str, flags=re.MULTILINE)  # Rollbar error #13027. Python email lib fails with "IndexError: string index out of range"
-    email_str = re.sub(r'(?i)^(From:\s*.+@)\s*$', INVALID_DOMAIN_REPLACEMENT, email_str, flags=re.MULTILINE)  # Rollbar error #13027. Python email lib fails with "IndexError: string index out of range"
-    email_str = re.sub(r'(?i)^(Cc:\s*.+@)\s*$', INVALID_DOMAIN_REPLACEMENT, email_str, flags=re.MULTILINE)  # Rollbar error #13027. Python email lib fails with "IndexError: string index out of range"
-    email_str = re.sub(r'(?i)^(Bcc:\s*.+@)\s*$', INVALID_DOMAIN_REPLACEMENT, email_str, flags=re.MULTILINE)  # Rollbar error #13027. Python email lib fails with "IndexError: string index out of range"
+    # Fixed ReDoS vulnerability: replaced .+ with [^@\s]+ to prevent catastrophic backtracking
+    email_str = re.sub(r'(?i)^(To:\s*[^@\s]+@)\s*$', INVALID_DOMAIN_REPLACEMENT, email_str, flags=re.MULTILINE)  # Rollbar error #13027. Python email lib fails with "IndexError: string index out of range"
+    email_str = re.sub(r'(?i)^(From:\s*[^@\s]+@)\s*$', INVALID_DOMAIN_REPLACEMENT, email_str, flags=re.MULTILINE)  # Rollbar error #13027. Python email lib fails with "IndexError: string index out of range"
+    email_str = re.sub(r'(?i)^(Cc:\s*[^@\s]+@)\s*$', INVALID_DOMAIN_REPLACEMENT, email_str, flags=re.MULTILINE)  # Rollbar error #13027. Python email lib fails with "IndexError: string index out of range"
+    email_str = re.sub(r'(?i)^(Bcc:\s*[^@\s]+@)\s*$', INVALID_DOMAIN_REPLACEMENT, email_str, flags=re.MULTILINE)  # Rollbar error #13027. Python email lib fails with "IndexError: string index out of range"
 
     return email_str
 
