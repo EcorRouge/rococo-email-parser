@@ -233,6 +233,9 @@ class TestDecodeBytesReDoSSafety:
         
         # With the fixed regex [^@\s]+, this should complete in constant time
         assert elapsed_time < 1.0
+        # Verify the function completed and returned a string
+        assert isinstance(result, str)
+        assert "Subject: Test" in result
 
 
 class TestGetOriginalMessages:
