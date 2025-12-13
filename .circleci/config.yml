@@ -82,10 +82,10 @@ workflows:
             - sonarqube
           filters:
             branches:
-              only: ilyaskarim-ROC-97  
+              only: main  
       - build-package:
           requires:
             - test-python
           filters:
             branches:
-              only: ilyaskarim-ROC-97
+              only: main
