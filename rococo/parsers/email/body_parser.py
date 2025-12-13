@@ -41,32 +41,38 @@ def _parse_previous_date(previous_body: str) -> str | None:
 # Returns 3 strings - entire body, current message and previous message
 
 
+def _is_reply_separator(line: str) -> bool:
+    """Check if line marks the start of a previous message section"""
+    return bool(FWD_RE.match(line) or REPLY_RE.match(line) or QUOTE_RE.match(line))
+
+
+def _append_to_body(body: str, line: str) -> str:
+    """Append a line to the body with proper newline handling"""
+    if len(body) > 0:
+        return body + "\n" + line
+    return line
+
+
 def _parse_plain_replies(body: str) -> tuple[str, str, str]:
     if body is None or body.strip() == "":
         return (body, body, None)
 
     current_body = ""
-    previous_body = None
-    current_msg_finished = False
+    previous_body = ""
+    in_previous_section = False
 
-    # Split the email body into lines.
     lines = body.splitlines()
     for line in lines:
-        if current_msg_finished:
-            previous_body += "\n" + line
+        if in_previous_section:
+            previous_body = _append_to_body(previous_body, line)
+        elif _is_reply_separator(line):
+            in_previous_section = True
+            previous_body = line
         else:
-            # Check if line marks the start of previous message section
-            if FWD_RE.match(line) or REPLY_RE.match(line) or QUOTE_RE.match(line):
-                current_msg_finished = True
+            current_body = _append_to_body(current_body, line)
 
-            if current_msg_finished:
-                previous_body = line if previous_body is None else previous_body + "\n" + line
-            else:
-                if len(current_body) > 0:
-                    current_body += "\n"
-                current_body += line
-
-    return (body, current_body, previous_body)
+    # Return None for previous_body if it's empty
+    return (body, current_body, previous_body if previous_body else None)
 
 # Function to parse current message body and all previous messages (in quoted section)
 # For plain-text body.
