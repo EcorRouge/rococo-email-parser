@@ -10,6 +10,9 @@ from .header_parser import (
     _get_header
 )
 
+# Constant for fixing invalid email domains
+INVALID_DOMAIN_REPLACEMENT = r'\1invalid-domain'
+
 # Sample date record catered in the pattern: Sat, 5 Jul 2020 18:13:51 +0000
 DATE_TIME_RE = re.compile(
     r"\b"
@@ -42,10 +45,11 @@ def _decode_bytes(email_bytes: bytes) -> str:
         email_str = email_str.replace("]>", ">")
 
     email_str = re.sub(r'(?i)^Message-ID:\s*<\s*>\s*$', 'Message-ID:', email_str, flags=re.MULTILINE)  # Rollbar error #13028. Python email lib fails with "IndexError: list index out of range"
-    email_str = re.sub(r'(?i)^(To:\s*.+@)\s*$', r'\1invalid-domain', email_str, flags=re.MULTILINE)  # Rollbar error #13027. Python email lib fails with "IndexError: string index out of range"
-    email_str = re.sub(r'(?i)^(From:\s*.+@)\s*$', r'\1invalid-domain', email_str, flags=re.MULTILINE)  # Rollbar error #13027. Python email lib fails with "IndexError: string index out of range"
-    email_str = re.sub(r'(?i)^(Cc:\s*.+@)\s*$', r'\1invalid-domain', email_str, flags=re.MULTILINE)  # Rollbar error #13027. Python email lib fails with "IndexError: string index out of range"
-    email_str = re.sub(r'(?i)^(Bcc:\s*.+@)\s*$', r'\1invalid-domain', email_str, flags=re.MULTILINE)  # Rollbar error #13027. Python email lib fails with "IndexError: string index out of range"
+    # Fixed ReDoS vulnerability: replaced .+ with [^@\s]+ to prevent catastrophic backtracking
+    email_str = re.sub(r'(?i)^(To:\s*[^@\s]+@)\s*$', INVALID_DOMAIN_REPLACEMENT, email_str, flags=re.MULTILINE)  # Rollbar error #13027. Python email lib fails with "IndexError: string index out of range"
+    email_str = re.sub(r'(?i)^(From:\s*[^@\s]+@)\s*$', INVALID_DOMAIN_REPLACEMENT, email_str, flags=re.MULTILINE)  # Rollbar error #13027. Python email lib fails with "IndexError: string index out of range"
+    email_str = re.sub(r'(?i)^(Cc:\s*[^@\s]+@)\s*$', INVALID_DOMAIN_REPLACEMENT, email_str, flags=re.MULTILINE)  # Rollbar error #13027. Python email lib fails with "IndexError: string index out of range"
+    email_str = re.sub(r'(?i)^(Bcc:\s*[^@\s]+@)\s*$', INVALID_DOMAIN_REPLACEMENT, email_str, flags=re.MULTILINE)  # Rollbar error #13027. Python email lib fails with "IndexError: string index out of range"
 
     return email_str
 
@@ -64,20 +68,28 @@ def _get_original_messages(email_message: EmailMessage, header_name: str = 'mess
             continue
 
         if part.is_multipart():
-            for payload in part.get_payload():
-                header_value = payload.get(header_name, None)
-
-                if header_value:
-                    nested_messages.append(part)
+            _check_multipart_for_nested_message(part, header_name, nested_messages)
         else:
-            payload = part.get_payload()
-            headers = _get_header(payload, header_name)
-
-            for header_value in headers:
-                if header_value:
-                    nested_messages.append(part)
+            _check_simple_part_for_nested_message(part, header_name, nested_messages)
 
     return nested_messages
+
+
+def _check_multipart_for_nested_message(part: MIMEPart, header_name: str, nested_messages: list):
+    """Check if multipart contains nested message with specified header"""
+    for payload in part.get_payload():
+        if payload.get(header_name):
+            nested_messages.append(part)
+            break
+
+
+def _check_simple_part_for_nested_message(part: MIMEPart, header_name: str, nested_messages: list):
+    """Check if simple part contains nested message with specified header"""
+    payload = part.get_payload()
+    headers = _get_header(payload, header_name)
+    
+    if any(headers):
+        nested_messages.append(part)
 
 
 def _get_message_date(email_message: EmailMessage) -> datetime:
