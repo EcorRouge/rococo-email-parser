@@ -17,7 +17,7 @@ class ContentTypes(CompatibleStrEnum):
 
     @classmethod
     def list(cls):
-        return list(map(lambda h: h.value, cls))
+        return [h.value for h in cls]
 
 
 class JournalingHeader(CompatibleStrEnum):
@@ -32,4 +32,4 @@ class JournalingHeader(CompatibleStrEnum):
 
     @classmethod
     def list(cls):
-        return list(map(lambda h: h.value, cls))
+        return [h.value for h in cls]

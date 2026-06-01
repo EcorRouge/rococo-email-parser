@@ -75,25 +75,9 @@ def parse(email_bytes: bytes, ignorable_policy: dict = None) -> Email:
             date=utc_date,
             timestamp=int(datetime.timestamp(utc_date))
         )
-        model.message_id
 
         if any(header in email_message for header in JournalingHeader.list()):
-            try:
-                nested_messages = _get_original_messages(email_message)
-            except Exception:
-                _populate_model(
-                    model=model, email_message=email_message, raw_message=email_str)
-                return model
-
-            for nested_message in nested_messages:
-                if nested_message.is_attachment():
-                    continue
-
-                if nested_message.get_content_type() == ContentTypes.text_plain:
-                    model.extend('bcc', _parse_bcc(nested_message))
-                if nested_message.get_content_type() == ContentTypes.forwarding_content_type:
-                    _populate_model(
-                        model=model, email_message=nested_message.get_content(), raw_message=email_str)
+            _parse_journaled_email(model, email_message, email_str)
         else:
             _populate_model(model=model, email_message=email_message,
                             raw_message=email_str)
@@ -102,6 +86,26 @@ def parse(email_bytes: bytes, ignorable_policy: dict = None) -> Email:
     except Exception as e:
         _handle_ignorable(e, email_message, ignorable_policy)
         raise
+
+
+def _parse_journaled_email(model: Email, email_message: EmailMessage, email_str: str):
+    """Parse a journaled email (Exchange/O365)"""
+    try:
+        nested_messages = _get_original_messages(email_message)
+    except Exception:
+        _populate_model(model=model, email_message=email_message, raw_message=email_str)
+        return
+
+    for nested_message in nested_messages:
+        if nested_message.is_attachment():
+            continue
+
+        content_type = nested_message.get_content_type()
+        if content_type == ContentTypes.text_plain:
+            model.extend('bcc', _parse_bcc(nested_message))
+        if content_type == ContentTypes.forwarding_content_type:
+            _populate_model(
+                model=model, email_message=nested_message.get_content(), raw_message=email_str)
 
 
 def _is_valid_email(email_message: EmailMessage) -> bool:
@@ -144,7 +148,7 @@ def _populate_model(model: Email, email_message: EmailMessage, raw_message: str)
                     (model.timestamp - model.previous_timestamp) / 60)
                 if model.ttr < 0:
                     model.ttr = 0
-            except:
+            except (ValueError, TypeError, OverflowError):
                 pass
 
     (html, cur_html, prev_html) = _parse_html(email_message)

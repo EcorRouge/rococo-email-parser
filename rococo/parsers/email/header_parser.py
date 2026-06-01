@@ -34,7 +34,7 @@ def _parse_message_id(message: EmailMessage) -> str:
 
     return current_id
 
-def _parse_antispam_report_o365(report: str) -> str:
+def _parse_antispam_report_o365(report: str) -> str | None:
     """
     Parses antispam report string from O365
 
@@ -44,18 +44,21 @@ def _parse_antispam_report_o365(report: str) -> str:
     pairs = report.split(';')
     for pair in pairs:
         keyval = pair.split(':')
-        if len(keyval) >= 2:
-            if keyval[0].lower() == "cat":
-                if keyval[1].lower() == "spm" or keyval[1].lower() == "hspm":
-                    return "Spam"
-            elif keyval[0].lower() == "sfv":
-                if keyval[1].lower() == "spm" or keyval[1].lower() == "skb":
-                    return "Spam"
+        if len(keyval) < 2:
+            continue
+            
+        key = keyval[0].lower()
+        value = keyval[1].lower()
+        
+        if key == "cat" and value in ("spm", "hspm"):
+            return "Spam"
+        if key == "sfv" and value in ("spm", "skb"):
+            return "Spam"
 
     return None
 
 
-def _parse_antispam_report(message: EmailMessage) -> str:
+def _parse_antispam_report(message: EmailMessage) -> str | None:
     """
     Parses antispam headers to detect message category. (Now understands only O365 and Spam. To implement - Social, Promotion, others)
 

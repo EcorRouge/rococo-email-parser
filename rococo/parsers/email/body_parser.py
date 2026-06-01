@@ -24,7 +24,7 @@ DATE_HDR_RE = re.compile(r"^>*Date:\s+(.*)\s+at\s+(.*)")
 # Returns extracted date&time as string, expected format is "Jan 14, 2024 3:24 PM -0800"
 
 
-def _parse_previous_date(previous_body: str) -> str:
+def _parse_previous_date(previous_body: str) -> str | None:
     # need to go through lines one by one, because we need the first regex match
     lines = previous_body.splitlines()
     for line in lines:
@@ -41,40 +41,38 @@ def _parse_previous_date(previous_body: str) -> str:
 # Returns 3 strings - entire body, current message and previous message
 
 
-def _parse_plain_replies(body: str) -> tuple[str, str, str]:
+def _is_reply_separator(line: str) -> bool:
+    """Check if line marks the start of a previous message section"""
+    return bool(FWD_RE.match(line) or REPLY_RE.match(line) or QUOTE_RE.match(line))
+
+
+def _append_to_body(body: str, line: str) -> str:
+    """Append a line to the body with proper newline handling"""
+    if len(body) > 0:
+        return body + "\n" + line
+    return line
+
+
+def _parse_plain_replies(body: str | None) -> tuple[str | None, str | None, str | None]:
     if body is None or body.strip() == "":
         return (body, body, None)
 
     current_body = ""
-    previous_body = None
+    previous_body = ""
+    in_previous_section = False
 
-    current_msg_finished = False
-
-    # Split the email body into lines.
     lines = body.splitlines()
     for line in lines:
-        if current_msg_finished:
-            previous_body += "\n" + line
+        if in_previous_section:
+            previous_body = _append_to_body(previous_body, line)
+        elif _is_reply_separator(line):
+            in_previous_section = True
+            previous_body = line
         else:
-            # If the line matches the forwarded message pattern:
-            if FWD_RE.match(line):
-                current_msg_finished = True
-            elif REPLY_RE.match(line):
-                current_msg_finished = True
-            elif QUOTE_RE.match(line):
-                current_msg_finished = True
+            current_body = _append_to_body(current_body, line)
 
-            if current_msg_finished:
-                if previous_body:
-                    previous_body += "\n" + line
-                else:
-                    previous_body = line
-            else:
-                if (len(current_body)) > 0:
-                    current_body += "\n"
-                current_body += line
-
-    return (body, current_body, previous_body)
+    # Return None for previous_body if it's empty
+    return (body, current_body, previous_body if previous_body else None)
 
 # Function to parse current message body and all previous messages (in quoted section)
 # For plain-text body.
@@ -98,47 +96,71 @@ def _parse_body(email_message) -> tuple[str, str, str]:
 def _parse_html_replies_soup(soup) -> (str, str):
     prev_body_html = None
 
-    # This is how gmail adds previous emails (quote format #1) - quoted text is inside first div with class "gmail_quote" - there's a tree of such divs if thread is large
-    replyDiv = soup.find('div', {'class': 'gmail_quote'})
-    if replyDiv:
-        prev_body_html = str(replyDiv)
-        replyDiv.decompose()
-    else:  # This is o365 format - common for other mail clients - cited text is inside div with name "messageReplySection" - and there's a tree like in gmail format. Actually, this may also present in the gmail format, but not at the top level
-        replyDiv = soup.find('div', {'name': 'messageReplySection'})
-        if replyDiv:
-            prev_body_html = str(replyDiv)
-            replyDiv.decompose()
-
-    # This is probably Outlook format - replies/forwarded messages are split using <hr/>, and there's a marker div with id='appendOnSend'. Next level has id ='x_appendOnSend'.
+    # Try Gmail format - quoted text in div with class "gmail_quote"
+    prev_body_html = _extract_gmail_quote(soup)
+    
+    # Try O365 format - cited text in div with name "messageReplySection"
     if not prev_body_html:
-        markerDiv = soup.find('div', {'id': 'appendonsend'})
-        if markerDiv:
-            prev_body_html = str(markerDiv)
-
-            siblings = []
-            for sibling in markerDiv.next_siblings:
-                prev_body_html += "\n" + str(sibling)
-                siblings += sibling
-
-            for sibling in siblings:
-                try:
-                    sibling.decompose()
-                except Exception:
-                    pass
-
-            markerDiv.decompose()
+        prev_body_html = _extract_o365_quote(soup)
+    
+    # Try Outlook format - marker div with id='appendonsend'
+    if not prev_body_html:
+        prev_body_html = _extract_outlook_quote(soup)
 
     # Get the final HTML after removing previous text
     cur_body_html = str(soup)
 
     return (cur_body_html, prev_body_html)
 
+
+def _extract_gmail_quote(soup) -> str | None:
+    """Extract Gmail quote format"""
+    reply_div = soup.find('div', {'class': 'gmail_quote'})
+    if reply_div:
+        prev_html = str(reply_div)
+        reply_div.decompose()
+        return prev_html
+    return None
+
+
+def _extract_o365_quote(soup) -> str | None:
+    """Extract O365/messageReplySection quote format"""
+    reply_div = soup.find('div', {'name': 'messageReplySection'})
+    if reply_div:
+        prev_html = str(reply_div)
+        reply_div.decompose()
+        return prev_html
+    return None
+
+
+def _extract_outlook_quote(soup) -> str | None:
+    """Extract Outlook appendonsend quote format"""
+    marker_div = soup.find('div', {'id': 'appendonsend'})
+    if not marker_div:
+        return None
+        
+    prev_html = str(marker_div)
+    siblings = []
+    
+    for sibling in marker_div.next_siblings:
+        prev_html += "\n" + str(sibling)
+        siblings.append(sibling)
+
+    for sibling in siblings:
+        try:
+            sibling.decompose()
+        except Exception:
+            pass
+
+    marker_div.decompose()
+    return prev_html
+
 # Function to parse current message body and all previous messages (in quoted section)
 # For html body.
 # Takes message html body as an argument
 
 
-def _parse_html_replies(html: str) -> (str, str, str):
+def _parse_html_replies(html: str | None) -> tuple[str | None, str | None, str | None]:
     if html is None or html.strip() == "":
         return (html, html, None)
 
@@ -169,48 +191,48 @@ def _parse_html(email_message) -> (str, str, str):
             return (None, None, None)
 
         html = "".join(_parse_content(text_html))
-        # If there's img tags with cid, replace it with the actual image
         soup = BeautifulSoup(html, "html.parser")
 
-        # Find all img tags with a src attribute that starts with 'cid:'
-        img_tags = soup.find_all("img", {"src": re.compile("^cid:")})
+        # Replace img tags with cid: references with actual base64 data
+        _replace_cid_images(soup, email_message)
 
-        # For each img tag, replace the src attribute with a URL pointing
-        # to the attachment data
-        for img_tag in img_tags:
-            # Extract the CID without the 'cid:' prefix
-            cid = img_tag["src"][4:]
-
-            # Retrieve the attachment data by the CID
-            for message in email_message.walk():
-                if message.is_attachment() or message.get('Content-ID'):
-                    if cid in message.get('Content-ID', ""):
-                        # Extract the image type from the CID
-                        if message.get_filename():
-                            image_type = os.path.splitext(message.get_filename())[
-                                1][1:].lower()
-                        else:
-                            image_type = message.get_content_subtype()
-                        image_data = message.get_payload()
-
-                        # Set the src attribute with the base64-encoded data
-                        img_tag["src"] = f"data:image/{image_type};base64,{image_data}"
-
-        # Get the final HTML after replacing the CID references with
-        # base64-encoded data URLs
+        # Get the final HTML after replacing the CID references
         html = str(soup)
-
         (cur_body_html, prev_body_html) = _parse_html_replies_soup(soup)
-    except RecursionError as e:
+    except RecursionError:
         logger.info(
             f"Retrying with recursion limit of {default_recursion_limit * 2}")
         sys.setrecursionlimit(default_recursion_limit * 2)
-
         return _parse_html(email_message)
     finally:
         sys.setrecursionlimit(default_recursion_limit)
 
     return (html, cur_body_html, prev_body_html)
+
+
+def _replace_cid_images(soup, email_message):
+    """Replace img tags with cid: references with base64-encoded data URLs"""
+    img_tags = soup.find_all("img", {"src": re.compile("^cid:")})
+    
+    for img_tag in img_tags:
+        cid = img_tag["src"][4:]  # Remove 'cid:' prefix
+        
+        for message in email_message.walk():
+            if not (message.is_attachment() or message.get('Content-ID')):
+                continue
+                
+            if cid not in message.get('Content-ID', ""):
+                continue
+                
+            # Extract the image type
+            if message.get_filename():
+                image_type = os.path.splitext(message.get_filename())[1][1:].lower()
+            else:
+                image_type = message.get_content_subtype()
+                
+            image_data = message.get_payload()
+            img_tag["src"] = f"data:image/{image_type};base64,{image_data}"
+            break
 
 
 def _parse_content(email_message):
